@@ -1,23 +1,91 @@
+$install_mysql = <<-SCRIPT
+apt-get update && \
+apt-get install -y mysql-server && \
+mysql -e "create user 'phpuser'@'%' identified by 'pass';"
+SCRIPT
+
+$install_ansible = <<-SCRIPT
+apt update && \
+sudo apt install software-properties-common && \
+sudo add-apt-repository --yes --update ppa:ansible/ansible && \
+sudo apt install ansible --yes
+SCRIPT
+
 Vagrant.configure("2") do |config|
-    config.vm.box = "ubuntu/focal64"
-    
+  config.vm.box = "ubuntu/focal64"
+  config.vm.provider "virtualbox" do |vb|
+      vb.memory = 512
+      vb.cpus = 1
+  end
+
+  #VM MysqlDB
+  config.vm.define "mysqldb" do |mysql|
     #Port Forward - Porta redirecionada do IP do Hospedeiro para a máquina virtual
-    config.vm.network "forwarded_port", guest: 80, host: 8080
+    #mysql.vm.network "forwarded_port", guest: 80, host: 8080
         
     #Private Network - Rede interna do virtualizador
     #config.vm.network "private_network", ip: "192.168.50.4"
-    config.vm.network "private_network", type: "dhcp"
+    mysql.vm.network "private_network", type: "dhcp"
 
     #Public Network - Ip externo que a VM terá na rede da empresa.
-    config.vm.network "public_network", ip: "192.168.1.142"
+    mysql.vm.network "public_network", ip: "192.168.1.142"
 
     #usando o shell script 
-    config.vm.provision "shell", 
+    mysql.vm.provision "shell", 
       inline: "cat /configs/id_rsa.pub >> .ssh/authorized_keys"
+      mysql.vm.provision "shell", 
+      inline: $install_mysql
+      mysql.vm.provision "shell", 
+      inline: "cat /configs/mysqld.cnf > /etc/mysql/mysql.conf.d/mysqld.cnf"
+      mysql.vm.provision "shell", 
+      inline: "service mysql restart"
 
+      
     #Montando diretório.
-    config.vm.synced_folder "./configs", "/configs"
-    config.vm.synced_folder ".", "/vagrant", disabled: true
-
-
+    mysql.vm.synced_folder "./configs", "/configs"
+    mysql.vm.synced_folder ".", "/vagrant", disabled: true 
   end
+
+  #VM PHP Web
+  config.vm.define "phpweb" do |phpweb|
+      phpweb.vm.network "forwarded_port", guest: 80, host: 8080
+      phpweb.vm.network "public_network", ip: "192.168.1.152"  
+  end
+
+  #VM MySqlServer
+  config.vm.define "mysqlserver" do |mysqlserver|
+    mysqlserver.vm.network "public_network", ip: "192.168.1.48"
+    mysqlserver.vm.provision "shell", 
+      inline: "cat /vagrant/configs/id_rsa.pub >> .ssh/authorized_keys"
+  end
+
+  #VM Ansible
+  config.vm.define "ansible" do |ansible|
+    ansible.vm.provider "virtualbox" do |vb|
+      vb.memory = 2048
+      vb.cpus = 3
+      vb.name = "Ansible_Ubuntu"
+    end
+    ansible.vm.network "public_network", ip: "192.168.1.78"
+    ansible.vm.provision "shell", inline: $install_ansible
+    ansible.vm.provision "shell", 
+      inline: "cp /vagrant/id_rsa /home/vagrant && \
+      chmod 600 /home/vagrant/id_rsa && \
+      chown vagrant.vagrant /home/vagrant/id_rsa"
+    #ansible.vm.provision "shell",
+      #inline "ansible-playbook -i /vagrant/configs/ansible/hosts /vagrant/configs/ansible/playbook.yml"
+  end
+
+  #VM nova
+  config.vm.define "dockerhost" do |dockerhost|
+    dockerhost.vm.box = "ubuntu/focal64"
+    dockerhost.vm.provider "virtualbox" do |vb|
+      vb.memory = 2048
+      vb.cpus = 1
+      vb.name = "dockerhost"
+    dockerhost.vm.provision "shell",
+    inline: "apt-get update && \
+    apt-get install -y docker.io"
+    end
+  end  
+end
