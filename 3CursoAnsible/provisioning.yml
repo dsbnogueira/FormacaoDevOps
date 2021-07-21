@@ -1,33 +1,9 @@
 ---
-- hosts: all
-  tasks:
-    - name: 'Instalando Apache2 e MysqlServer...'
-      apt:
-        name: 
-        - htop
-        - apache2
-        - mariadb-server
-        - python3-pymysql #pacote para o ansible mexer no mysql
-        state: latest
-      become: yes
+- hosts: database
+  roles:
+    - mysql
 
-    - name: "Criando base de dados Mysql..."
-      mysql_db:
-        login_unix_socket: /var/run/mysqld/mysqld.sock
-        name: wordpress_db
-        login_user: root
-        state: present #present -> cria base / absent -> excluir base
-      become: yes
-
-    - name: "Criar usuario no Mysql..."
-      mysql_user:
-        login_unix_socket: /var/run/mysqld/mysqld.sock
-        login_user: root
-        name: diogon
-        password: '123456'
-        priv: 'wordpress_db.*:ALL'
-        state: present
-      become: yes
-
-      
-
+- hosts: web
+  roles: 
+    - web
+    - wordpress

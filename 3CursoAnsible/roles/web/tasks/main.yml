@@ -1,0 +1,14 @@
+---
+- name: 'Instalando pacotes necessários...'
+  apt:
+    name: 
+    - htop
+    - apache2
+    - python3-pymysql #pacote para o ansible mexer no mysql
+    - php7.4
+    - php7.4-gd
+    - php-ssh2
+    - php7.4-mysql
+    - mariadb-client
+    state: latest
+  become: yes

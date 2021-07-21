@@ -1,0 +1,7 @@
+---
+db_username: diogon
+db_passwd: '123456'
+db_name: wordpress_db
+wp_installation_dir: '/var/www/wordpress'
+web_host_ip: 192.168.1.35
+db_host_ip: 192.168.1.45

@@ -1,0 +1,41 @@
+---
+- name: 'Instalando MysqlServer...'
+  apt:
+    name: 
+    - htop
+    - mariadb-server
+    - python3-pymysql #pacote para o ansible mexer no mysql
+    state: latest
+  become: yes
+
+- name: "Criando base de dados Mysql..."
+  mysql_db:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    name: "{{ db_name }}"
+    login_user: root
+    state: present #present -> cria base / absent -> excluir base
+  become: yes
+
+- name: "Criar usuario no Mysql..."
+  mysql_user:
+    login_unix_socket: /var/run/mysqld/mysqld.sock
+    login_user: root
+    name: "{{ db_username }}"
+    password: "{{ db_passwd }}"
+    priv: '{{ db_name }}.*:ALL'
+    state: present
+    host: "{{ item }}"
+  with_items:
+    - 'localhost'
+    - '127.0.0.1'
+    - "{{ web_host_ip }}"
+  become: yes
+
+- name: "Ajustando para receber conexões remotas..."
+  replace:
+    path: "/etc/mysql/mariadb.conf.d/50-server.cnf"
+    regexp: "127.0.0.1"
+    replace: "0.0.0.0"
+  become: yes
+  notify:
+    - restart mysql
